@@ -20,6 +20,7 @@ public class CreateCardRequest {
     public CreateCardRequest(String front, String back) {
         this.front = front;
         this.back = back;
+        System.out.println("tamir");
     }
 
     public String getFront() {
