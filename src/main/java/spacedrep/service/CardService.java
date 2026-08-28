@@ -55,6 +55,7 @@ public class CardService {
 
         Card card = optionalCard.get();
         sm2Service.calculateSM2(card, grade);
+        System.out.println("test");
         return cardRepository.save(card);
     }
 
