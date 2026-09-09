@@ -37,7 +37,7 @@ public class SM2AlgorithmService {
 
     private double calculateEF(double currEf, int q){
         double newEf = currEf + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
-        newEf = Math.max(1.3, newEf); // optimal minimum to avoid too much repetitions
+        newEf = Math.max(1.3, newEf); // optimal minimum to avoid too many repetitions
         return newEf;
     }
 
