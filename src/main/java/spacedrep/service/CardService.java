@@ -73,4 +73,8 @@ public class CardService {
 
         cardRepository.deleteById(id);
     }
+
+    public void deleteAllCards() {
+        cardRepository.deleteAll();
+    }
 }

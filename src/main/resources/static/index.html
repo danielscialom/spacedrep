@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spaced Repetition Flashcards</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 40px;
+            margin-bottom: 60px;
+            font-family: Arial, sans-serif;
+            background-color: #faf7f2;
+            color: #3b2a1a;
+        }
+
+        h1 {
+            margin-bottom: 6px;
+        }
+
+        #mode-title {
+            color: #8c6d48;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        #card-counter {
+            font-size: 14px;
+            font-weight: bold;
+            color: #8c6d48;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        #card {
+            width: 380px;
+            height: 210px;
+            border: 2px solid #8c6d48;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            background-color: #ebd5b3;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #card-text {
+            font-size: 20px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 18px;
+            font-size: 15px;
+            color: #3b2a1a;
+            background-color: #ebd5b3;
+            border: 2px solid #8c6d48;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #dfc2a5;
+        }
+
+        .danger-btn {
+            background-color: #f5d0cd;
+            border-color: #c95c52;
+            color: #7a1d15;
+        }
+
+        .danger-btn:hover {
+            background-color: #ebb7b3;
+        }
+
+        #grade-legend {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #6b533e;
+            background: #f2e6d5;
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid #dfc2a5;
+            text-align: center;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .management-section {
+            margin-top: 40px;
+            width: 380px;
+            background: #ffffff;
+            border: 1px solid #d9cbbe;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+            .management-section h3 {
+            margin: 0 0 6px 0;
+            font-size: 16px;
+            color: #3b2a1a;
+        }
+
+        .management-section input {
+            padding: 10px;
+            border: 1px solid #8c6d48;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Flashcards App</h1>
+<div id="mode-title">Daily Review</div>
+<div id="card-counter">Card 0 of 0</div>
+
+<div id="card">
+    <p id="card-text">Loading...</p>
+</div>
+
+<div id="controls"></div>
+
+<div id="grade-legend">
+    <strong>SM-2 Scale:</strong> 1 = Blackout | 2 = Wrong | 3 = Hard (but right) | 4 = Good | 5 = Easy
+</div>
+
+<div style="margin-top: 15px;">
+    <button id="delete-current-btn" class="danger-btn">Delete This Card</button>
+</div>
+
+<div class="management-section">
+    <h3>Add New Flashcard</h3>
+    <input type="text" id="front-input" placeholder="Front (Question)" />
+    <input type="text" id="back-input" placeholder="Back (Answer)" />
+    <button id="add-card-btn">Create Card</button>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;" />
+
+    <div class="action-row">
+        <button id="delete-all-btn" class="danger-btn" style="width: 100%;">Delete All Cards</button>
+    </div>
+</div>
+
+<script>
+    const card = document.getElementById('card');
+    const cardText = document.getElementById('card-text');
+    const cardCounter = document.getElementById('card-counter');
+    const modeTitle = document.getElementById('mode-title');
+    const controls = document.getElementById('controls');
+    const gradeLegend = document.getElementById('grade-legend');
+    const deleteCurrentBtn = document.getElementById('delete-current-btn');
+
+    const frontInput = document.getElementById('front-input');
+    const backInput = document.getElementById('back-input');
+    const addCardBtn = document.getElementById('add-card-btn');
+    const deleteAllBtn = document.getElementById('delete-all-btn');
+
+    let cards = [];
+    let currentIndex = 0;
+    let isShowingFront = true;
+    let isDailyMode = true;
+
+    // Load daily cards
+    async function loadDailyCards() {
+        isDailyMode = true;
+        modeTitle.innerText = "Daily Review";
+        cardText.innerText = "Loading...";
+        gradeLegend.style.display = "block";
+        deleteCurrentBtn.style.display = "inline-block";
+
+        try {
+            const response = await fetch('/api/cards/due');
+            cards = await response.json();
+
+            if (cards.length > 0) {
+                currentIndex = 0;
+                showCard();
+                renderRatingButtons();
+            } else {
+                finishDailyReview();
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            cardText.innerText = "Error connecting to server";
+        }
+    }
+
+    // Show a card
+    function showCard() {
+        if (cards.length === 0) {
+            cardText.innerText = "No cards available";
+            cardCounter.innerText = "Card 0 of 0";
+            deleteCurrentBtn.disabled = true;
+            return;
+        }
+        deleteCurrentBtn.disabled = false;
+        isShowingFront = true;
+        cardText.innerText = cards[currentIndex].front;
+        cardCounter.innerText = "Card " + (currentIndex + 1) + " of " + cards.length;
+    }
+
+    // Reverse a card by clicking
+    card.addEventListener('click', function () {
+        if (cards.length === 0) return;
+        if (isShowingFront) {
+            cardText.innerText = cards[currentIndex].back;
+            isShowingFront = false;
+        } else {
+            cardText.innerText = cards[currentIndex].front;
+            isShowingFront = true;
+        }
+    });
+
+    // Rating buttons
+    function renderRatingButtons() {
+        controls.innerHTML = "";
+        gradeLegend.style.display = "block";
+
+        for (let grade = 1; grade <= 5; grade++) {
+            const btn = document.createElement('button');
+            btn.innerText = grade;
+            btn.addEventListener('click', () => submitReview(grade));
+            controls.appendChild(btn);
+        }
+    }
+
+    // Submitting the review
+    async function submitReview(grade) {
+        const currentCard = cards[currentIndex];
+
+        try {
+            await fetch(`/api/cards/${currentCard.id}/review`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ grade: grade })
+            });
+
+            currentIndex++;
+            if (currentIndex < cards.length) {
+                showCard();
+            } else {
+                finishDailyReview();
+            }
+        } catch (error) {
+            console.error("Error submitting review:", error);
+            alert("Failed to submit review.");
+        }
+    }
+
+    // Finish daily practice
+    function finishDailyReview() {
+        cards = [];
+        cardCounter.innerText = "";
+        cardText.innerText = "You're all done for today!";
+        controls.innerHTML = "";
+        gradeLegend.style.display = "none";
+        deleteCurrentBtn.style.display = "none";
+
+        const practiceBtn = document.createElement('button');
+        practiceBtn.innerText = "Practice All Cards (Random)";
+        practiceBtn.addEventListener('click', startRandomPractice);
+        controls.appendChild(practiceBtn);
+    }
+
+    // Free practice without ratings
+    async function startRandomPractice() {
+        isDailyMode = false;
+        modeTitle.innerText = "Free Practice (No Ratings)";
+        cardText.innerText = "Loading...";
+        gradeLegend.style.display = "none";
+        deleteCurrentBtn.style.display = "inline-block";
+
+        try {
+            const response = await fetch('/api/cards');
+            cards = await response.json();
+
+            if (cards.length === 0) {
+                cardText.innerText = "No cards found in database.";
+                deleteCurrentBtn.disabled = true;
+                return;
+            }
+
+            cards.sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            showCard();
+
+            controls.innerHTML = "";
+            const nextBtn = document.createElement('button');
+            nextBtn.innerText = "Next Card";
+            nextBtn.addEventListener('click', function () {
+                currentIndex = (currentIndex + 1) % cards.length;
+                showCard();
+            });
+            controls.appendChild(nextBtn);
+
+        } catch (error) {
+            console.error("Error loading cards:", error);
+            cardText.innerText = "Error loading cards";
+        }
+    }
+
+    // Add new card
+    addCardBtn.addEventListener('click', async function () {
+        const frontVal = frontInput.value.trim();
+        const backVal = backInput.value.trim();
+
+        if (!frontVal || !backVal) {
+            alert("Please fill in both Front and Back fields.");
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/cards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ front: frontVal, back: backVal })
+            });
+
+            if (response.ok) {
+                frontInput.value = "";
+                backInput.value = "";
+                alert("Card created successfully!");
+                // Refreshing the cards pile
+                if (isDailyMode) loadDailyCards();
+                else startRandomPractice();
+            } else {
+                alert("Server rejected the card. Check input constraints.");
+            }
+        } catch (error) {
+            console.error("Error creating card:", error);
+            alert("Network error while creating card.");
+        }
+    });
+
+    // Delete a card by id (DELETE /api/cards/{id})
+    deleteCurrentBtn.addEventListener('click', async function () {
+        if (cards.length === 0) return;
+        const currentCard = cards[currentIndex];
+
+        const isConfirmed = window.confirm(`Delete this card? (${currentCard.front})`);
+        if (!isConfirmed) return;
+
+        try {
+            const response = await fetch(`/api/cards/${currentCard.id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                // Remove the card from the array and update the display
+                cards.splice(currentIndex, 1);
+                if (currentIndex >= cards.length) {
+                    currentIndex = 0;
+                }
+                showCard();
+            }
+        } catch (error) {
+            console.error("Error deleting card:", error);
+            alert("Failed to delete card.");
+        }
+    });
+
+    // Delete all cards (DELETE /api/cards?confirm=true)
+    deleteAllBtn.addEventListener('click', async function () {
+        const isConfirmed = window.confirm("Are you sure you want to delete ALL cards? This action cannot be undone.");
+        if (!isConfirmed) return;
+
+        try {
+            const response = await fetch('/api/cards?confirm=true', {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert("All cards deleted.");
+                cards = [];
+                showCard();
+                controls.innerHTML = "";
+            } else {
+                alert("Deletion failed on server.");
+            }
+        } catch (error) {
+            console.error("Error deleting all cards:", error);
+            alert("Network error during bulk delete.");
+        }
+    });
+
+    loadDailyCards();
+</script>
+</body>
+</html>

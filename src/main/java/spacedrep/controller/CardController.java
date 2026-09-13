@@ -3,13 +3,7 @@ package spacedrep.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import spacedrep.dto.CreateCardRequest;
 import spacedrep.dto.ReviewCardRequest;
 import spacedrep.model.Card;
@@ -56,6 +50,16 @@ public class CardController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCard(@PathVariable Long id) {
         cardService.deleteCard(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAllCards(
+            @RequestParam(name = "confirm", defaultValue = "false") boolean confirm) {
+        if (!confirm) {
+            return ResponseEntity.badRequest().build();
+        }
+        cardService.deleteAllCards();
         return ResponseEntity.noContent().build();
     }
 }
